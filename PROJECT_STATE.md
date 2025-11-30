@@ -1,6 +1,6 @@
 # Mammon Protocol - Project State
 
-> **Last Updated**: 2025-11-30
+> **Last Updated**: 2025-11-30 (Session 2)
 > **Read this file at the start of every new session**
 
 ## Quick Status
@@ -10,8 +10,8 @@
 | Fee Split (85/10/5) | ✅ Implemented | Code complete in cryptonote_tx_utils.cpp |
 | Emission Schedule | ✅ Implemented | 100/75/50/25/10 MAM per year |
 | RandomX Mining | ✅ Working | ~2 min initialization time |
-| Testnet Daemon | ✅ Built | v0.1.0-testnet |
-| Block Mining | ⏳ Pending Verification | Need to mine blocks and verify coinbase outputs |
+| Testnet Daemon | ✅ Running | v0.18.3.4 with mining enabled |
+| Block Mining | ⏳ In Progress | Daemon running, RandomX initializing |
 | Mainnet Launch | 🔜 TODO | Requires security audit |
 
 ---
@@ -62,15 +62,25 @@ Build Location: /opt/mammon/build/release/bin/
 
 ## 3. Wallet Addresses (Public - Testnet)
 
-### Treasury Wallet ("Mammon's Hoard")
+> **IMPORTANT**: Testnet addresses start with `9`, mainnet addresses start with `4`.
+> The treasury/insurance addresses below are MAINNET format - they need testnet equivalents for mining!
+
+### Miner Wallet (Testnet) - ACTIVE
+- **Purpose**: Mining rewards during testing
+- **Address**: `9x5qyWtzCy4Dv6YdPvxx3jettj9vHpB9LFtN1CVaqSmfdmdgcVmjbbERZUJFSZ5KAv4MnBefhZBWzWNrxwZDScPqD33M5Gt`
+- **Status**: Currently used for testnet mining
+
+### Treasury Wallet ("Mammon's Hoard") - Mainnet Format
 - **Purpose**: 10% of block rewards - Gold backing fund
 - **Address**: `4218Z6qrhKs9gNn2Y94mQ12H9ir7jEa2aMGUwESPffWne3VdLMTEVod7mtHWEFNWQc8ybe5K2ee6hGZThJPLv1xbU9eDPCJ`
+- **Note**: This is mainnet format (starts with 4). Need testnet wallet for fee split testing.
 
-### Insurance Wallet ("Oh Shit Fund" / MDIC)
+### Insurance Wallet ("Oh Shit Fund" / MDIC) - Mainnet Format
 - **Purpose**: 5% of block rewards - Emergency insurance
 - **Address**: `45tjbVVD79pPVpGTyx9PjnPiRrxvduhjiHRNXkqtiwiE5ToXQmSij8fcEJ82Gi5C7LBt2aohC9a9YWP1wXQ6ba2xKPfvzoB`
+- **Note**: This is mainnet format (starts with 4). Need testnet wallet for fee split testing.
 
-> ⚠️ **SECURITY NOTE**: Seeds and private keys are stored ONLY on the VM in `/opt/mammon/wallets/` and are NOT in this repository.
+> ⚠️ **SECURITY NOTE**: Seeds and private keys are stored ONLY on the VM in `/opt/mammon/wallets/` and `/var/lib/mammon/wallets/` and are NOT in this repository.
 
 ---
 
