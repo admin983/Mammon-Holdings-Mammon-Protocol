@@ -1,0 +1,12 @@
+{
+  "treasury": {
+    "address": "MAM508f3083db112b858da78bc6e655e9b684ab5df6911224e554c8a9afcb57",
+    "purpose": "10% of block rewards - Mammon's Hoard (gold backing)",
+    "created": "2025-11-30T02:30:31.506675"
+  },
+  "insurance": {
+    "address": "MAM9d05ef2b44710e4740e8b1b0dac948785ce375c1256d2dd7c6600234bde1",
+    "purpose": "5% of block rewards - Oh Shit Fund (MDIC)",
+    "created": "2025-11-30T02:30:31.506681"
+  }
+}

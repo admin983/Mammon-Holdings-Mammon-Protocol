@@ -1,0 +1,188 @@
+--- a/src/cryptonote_basic/difficulty.cpp
++++ b/src/cryptonote_basic/difficulty.cpp
+@@ -1,5 +1,7 @@
+ // Copyright (c) 2014-2023, The Monero Project
++// Copyright (c) 2025, Mammon Protocol
+ //
++// LWMA Difficulty Algorithm Implementation
+ // All rights reserved.
+ //
+ // Redistribution and use in source and binary forms, with or without modification, are
+@@ -30,6 +32,147 @@
+ 
+ #include "difficulty.h"
+ 
++// ============================================================================
++// MAMMON PROTOCOL - LWMA DIFFICULTY ALGORITHM
++// ============================================================================
++// Linearly Weighted Moving Average (LWMA-1)
++// Based on zawy12's algorithm: https://github.com/zawy12/difficulty-algorithms
++//
++// Advantages over Monero's default:
++// - Responds to hashrate changes within hours, not weeks
++// - Prevents timestamp manipulation attacks
++// - More stable block times during hashrate fluctuations
++// ============================================================================
++
++namespace mammon {
++namespace difficulty {
++
++// LWMA Parameters
++constexpr uint64_t N = 60;      // 60-block window (from DIFFICULTY_WINDOW)
++constexpr uint64_t T = 120;     // 120-second target (from DIFFICULTY_TARGET_V2)
++
++// Timestamp bounds to prevent manipulation
++constexpr int64_t TIMESTAMP_MIN = -T * 7;        // Can't be more than 840s in past
++constexpr int64_t TIMESTAMP_MAX = T * 7 * 2;     // Can't be more than 1680s in future
++
++/**
++ * LWMA-1 Difficulty Calculation
++ * 
++ * @param timestamps Vector of block timestamps (oldest to newest)
++ * @param cumulative_difficulties Vector of cumulative difficulties
++ * @param target Target block time in seconds
++ * @param testnet Whether this is testnet (applies minimum difficulty)
++ * @return Next difficulty value
++ */
++uint64_t calculate_lwma_difficulty(
++    const std::vector<uint64_t>& timestamps,
++    const std::vector<uint64_t>& cumulative_difficulties,
++    uint64_t target,
++    bool testnet)
++{
++    size_t length = timestamps.size();
++    
++    // Edge cases
++    if (length < 2) {
++        return testnet ? MAMMON_TESTNET_MIN_DIFFICULTY : 1;
++    }
++    
++    // Use smaller window if we don't have enough blocks
++    uint64_t window = std::min(static_cast<uint64_t>(length - 1), N);
++    
++    // LWMA calculation variables
++    uint64_t L = 0;       // Sum of weighted solve times
++    uint64_t sum_w = 0;   // Sum of weights (1 + 2 + 3 + ... + window)
++    uint64_t sum_d = 0;   // Sum of difficulties in window
++    
++    for (uint64_t i = 1; i <= window; i++) {
++        size_t idx = length - window - 1 + i;
++        
++        // Calculate solve time with sanity bounds
++        int64_t solvetime = static_cast<int64_t>(timestamps[idx]) - 
++                           static_cast<int64_t>(timestamps[idx - 1]);
++        
++        // Clamp solve time to prevent manipulation
++        // Negative times are suspicious but possible with clock drift
++        solvetime = std::max(solvetime, TIMESTAMP_MIN);
++        solvetime = std::min(solvetime, TIMESTAMP_MAX);
++        
++        // If still negative after clamping, use 1 second
++        if (solvetime < 1) {
++            solvetime = 1;
++        }
++        
++        // Weight increases linearly (more recent = higher weight)
++        uint64_t weight = i;
++        
++        L += static_cast<uint64_t>(solvetime) * weight;
++        sum_w += weight;
++        
++        // Calculate difficulty for this block
++        uint64_t block_diff;
++        if (idx > 0 && cumulative_difficulties[idx] > cumulative_difficulties[idx - 1]) {
++            block_diff = cumulative_difficulties[idx] - cumulative_difficulties[idx - 1];
++        } else {
++            block_diff = 1;  // Fallback
++        }
++        sum_d += block_diff;
++    }
++    
++    // Prevent division by zero
++    if (L == 0) L = 1;
++    if (sum_w == 0) sum_w = 1;
++    if (sum_d == 0) sum_d = window;
++    
++    // Calculate average difficulty over window
++    uint64_t avg_difficulty = sum_d / window;
++    
++    // Target total weighted time
++    uint64_t target_time = target * sum_w;
++    
++    // New difficulty = avg_difficulty * (target_time / actual_time)
++    // Using: D_new = (avg_difficulty * target_time) / L
++    // With protection against overflow
++    
++    uint64_t next_diff;
++    
++    // Check for potential overflow
++    if (avg_difficulty > UINT64_MAX / target_time) {
++        // Would overflow, use alternative calculation
++        next_diff = (avg_difficulty / L) * target_time;
++    } else {
++        next_diff = (avg_difficulty * target_time) / L;
++    }
++    
++    // Apply minimum difficulty
++    if (testnet && next_diff < MAMMON_TESTNET_MIN_DIFFICULTY) {
++        next_diff = MAMMON_TESTNET_MIN_DIFFICULTY;
++    }
++    
++    // Absolute minimum of 1
++    if (next_diff < 1) {
++        next_diff = 1;
++    }
++    
++    return next_diff;
++}
++
++/**
++ * Validate a proposed block timestamp
++ */
++bool validate_timestamp(
++    uint64_t proposed_timestamp,
++    const std::vector<uint64_t>& recent_timestamps,
++    uint64_t current_network_time)
++{
++    if (recent_timestamps.empty()) {
++        return true;  // Genesis or early block
++    }
++    
++    // Can't be before the last block
++    if (proposed_timestamp <= recent_timestamps.back()) {
++        // Actually, can be slightly before due to network latency
++        // Allow up to 60 seconds before previous block
++        if (proposed_timestamp + 60 < recent_timestamps.back()) {
++            return false;
++        }
++    }
++    
++    // Can't be too far in the future
++    if (proposed_timestamp > current_network_time + static_cast<uint64_t>(TIMESTAMP_MAX)) {
++        return false;
++    }
++    
++    // Median timestamp rule: must be greater than median of last N/2 blocks
++    size_t median_window = std::min(recent_timestamps.size(), static_cast<size_t>(N / 2));
++    if (median_window > 0) {
++        std::vector<uint64_t> sorted_times(
++            recent_timestamps.end() - median_window,
++            recent_timestamps.end()
++        );
++        std::sort(sorted_times.begin(), sorted_times.end());
++        
++        uint64_t median = sorted_times[sorted_times.size() / 2];
++        if (proposed_timestamp <= median) {
++            return false;
++        }
++    }
++    
++    return true;
++}
++
++} // namespace difficulty
++} // namespace mammon
++
++
+ #undef MONERO_DEFAULT_LOG_CATEGORY
+ #define MONERO_DEFAULT_LOG_CATEGORY "difficulty"

@@ -1,0 +1,55 @@
+{
+  "name": "Mammon Protocol",
+  "ticker": "MAM",
+  "network_id": "mammon-testnet-v1",
+  
+  "consensus": {
+    "algorithm": "RandomX",
+    "block_time_seconds": 120,
+    "difficulty_algorithm": "LWMA",
+    "difficulty_window": 60,
+    "difficulty_lag": 0,
+    "difficulty_cut": 0
+  },
+  
+  "emission": {
+    "schedule": [
+      {"year": 1, "block_reward": 100, "blocks_per_year": 262800},
+      {"year": 2, "block_reward": 75, "blocks_per_year": 262800},
+      {"year": 3, "block_reward": 50, "blocks_per_year": 262800},
+      {"year": 4, "block_reward": 25, "blocks_per_year": 262800},
+      {"year": 5, "block_reward": 10, "blocks_per_year": 262800, "perpetual": true}
+    ],
+    "atomic_units": 12,
+    "premine": 0
+  },
+  
+  "fee_split": {
+    "miner_percentage": 85,
+    "treasury_percentage": 10,
+    "insurance_percentage": 5,
+    "treasury_address": "TREASURY_ADDRESS_PLACEHOLDER",
+    "insurance_address": "INSURANCE_ADDRESS_PLACEHOLDER"
+  },
+  
+  "genesis": {
+    "timestamp": 0,
+    "nonce": 0,
+    "difficulty": 1,
+    "message": "I might be a demon, but at least my couch feels good. - Mammon, 2025"
+  },
+  
+  "network": {
+    "p2p_port": 28080,
+    "rpc_port": 28081,
+    "zmq_port": 28082,
+    "seed_nodes": []
+  },
+  
+  "testnet": {
+    "enabled": true,
+    "block_reward_multiplier": 1,
+    "reduced_difficulty": true,
+    "min_difficulty": 100
+  }
+}

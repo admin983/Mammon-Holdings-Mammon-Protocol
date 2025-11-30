@@ -1,0 +1,98 @@
+--- a/src/cryptonote_core/blockchain.cpp
++++ b/src/cryptonote_core/blockchain.cpp
+@@ -1,5 +1,7 @@
+ // Copyright (c) 2014-2023, The Monero Project
++// Copyright (c) 2025, Mammon Protocol
+ //
++// Mammon Protocol block reward modifications
+ // All rights reserved.
+ //
+ // Redistribution and use in source and binary forms, with or without modification, are
+@@ -100,6 +102,62 @@ static const struct {
+   { 1, HARDFORK_VERSION_1_HEIGHT },
+ };
+ 
++// ============================================================================
++// MAMMON PROTOCOL BLOCK REWARD CALCULATION
++// ============================================================================
++// Emission Schedule:
++//   Year 1: 100 MAM/block
++//   Year 2: 75 MAM/block
++//   Year 3: 50 MAM/block
++//   Year 4: 25 MAM/block
++//   Year 5+: 10 MAM/block (perpetual tail emission)
++//
++// Fee Distribution:
++//   85% - Miner
++//   10% - Treasury (Mammon's Hoard)
++//   5%  - Insurance (Oh Shit Fund)
++// ============================================================================
++
++namespace mammon {
++
++// Get base block reward for a given height
++uint64_t get_block_reward(uint64_t height) {
++    const uint64_t BLOCKS_PER_YEAR = MAMMON_BLOCKS_PER_YEAR;  // 262980
++    
++    if (height < BLOCKS_PER_YEAR * 1) {
++        return MAMMON_YEAR1_REWARD;  // 100 MAM
++    } else if (height < BLOCKS_PER_YEAR * 2) {
++        return MAMMON_YEAR2_REWARD;  // 75 MAM
++    } else if (height < BLOCKS_PER_YEAR * 3) {
++        return MAMMON_YEAR3_REWARD;  // 50 MAM
++    } else if (height < BLOCKS_PER_YEAR * 4) {
++        return MAMMON_YEAR4_REWARD;  // 25 MAM
++    } else {
++        return MAMMON_TAIL_REWARD;   // 10 MAM forever
++    }
++}
++
++// Fee distribution structure
++struct fee_distribution {
++    uint64_t miner_amount;
++    uint64_t treasury_amount;
++    uint64_t insurance_amount;
++};
++
++// Calculate fee split from total reward
++fee_distribution calculate_fee_split(uint64_t total_reward) {
++    fee_distribution dist;
++    
++    dist.treasury_amount = (total_reward * MAMMON_TREASURY_FEE_PERCENT) / 100;   // 10%
++    dist.insurance_amount = (total_reward * MAMMON_INSURANCE_FEE_PERCENT) / 100; // 5%
++    dist.miner_amount = total_reward - dist.treasury_amount - dist.insurance_amount;  // 85%
++    
++    // Note: integer division gives miner any rounding dust
++    return dist;
++}
++
++} // namespace mammon
++
++
+ //------------------------------------------------------------------
+ Blockchain::Blockchain(tx_memory_pool& tx_pool, service_nodes::service_node_list& sn_list):
+   m_db(), m_tx_pool(tx_pool), m_service_node_list(sn_list), m_hardfork(NULL), m_timestamps_and_difficulties_height(0),
+@@ -1200,8 +1258,25 @@ bool Blockchain::get_block_reward(uint8_t version, const size_t median_weight, c
+   return true;
+ }
+ //------------------------------------------------------------------
++// Mammon Protocol: Override base reward calculation
++bool Blockchain::get_mammon_block_reward(uint64_t height, uint64_t& base_reward, 
++                                          uint64_t& miner_reward,
++                                          uint64_t& treasury_reward,
++                                          uint64_t& insurance_reward) const
++{
++    base_reward = mammon::get_block_reward(height);
++    
++    mammon::fee_distribution dist = mammon::calculate_fee_split(base_reward);
++    miner_reward = dist.miner_amount;
++    treasury_reward = dist.treasury_amount;
++    insurance_reward = dist.insurance_amount;
++    
++    return true;
++}
++//------------------------------------------------------------------
+ uint64_t Blockchain::get_dynamic_base_fee_estimate(uint64_t grace_blocks) const
+ {
+   const uint8_t version = get_current_hard_fork_version();
+   const uint64_t db_height = m_db->height();
