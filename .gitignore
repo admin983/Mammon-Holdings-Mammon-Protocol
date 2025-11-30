@@ -1,0 +1,26 @@
+# Wallet keys and sensitive data
+testnet_data/wallets/keys/
+*.keys
+*.wallet
+
+# Build artifacts
+build/
+*.o
+*.so
+*.a
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node modules (if using any JS tooling)
+node_modules/
+
+# Logs
+*.log
