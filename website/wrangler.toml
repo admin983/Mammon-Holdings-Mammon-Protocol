@@ -1,0 +1,12 @@
+name = "mam-finance"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Production route - mam.finance
+routes = [
+  { pattern = "mam.finance/*", zone_name = "mam.finance" },
+  { pattern = "www.mam.finance/*", zone_name = "mam.finance" }
+]
+
+[vars]
+ENVIRONMENT = "production"
